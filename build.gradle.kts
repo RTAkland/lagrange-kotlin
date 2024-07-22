@@ -14,7 +14,7 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
-
+    implementation("io.netty:netty-all:4.1.112.Final")
     implementation("com.google.protobuf:protobuf-java:3.24.0")
 }
 
