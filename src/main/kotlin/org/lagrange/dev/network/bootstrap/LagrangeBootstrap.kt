@@ -1,10 +1,10 @@
-package org.lagrange.dev.org.lagrange.dev.network.bootstrap
+package org.lagrange.dev.network.bootstrap
 
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.EventLoopGroup
 import io.netty.channel.socket.SocketChannel
-import org.lagrange.dev.org.lagrange.dev.network.SimplePacketClientHandler
+import org.lagrange.dev.network.SimplePacketClientHandler
 import java.net.InetSocketAddress
 
 class LagrangeBootstrap(address: InetSocketAddress,

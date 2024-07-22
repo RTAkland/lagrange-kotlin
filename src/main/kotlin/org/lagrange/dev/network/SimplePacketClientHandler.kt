@@ -1,4 +1,4 @@
-package org.lagrange.dev.org.lagrange.dev.network
+package org.lagrange.dev.network;
 
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler.Sharable
@@ -11,6 +11,6 @@ class SimplePacketClientHandler : SimpleChannelInboundHandler<ByteBuf>() {
         // like connection is opened
     }
     override fun channelRead0(ctx: ChannelHandlerContext, buf: ByteBuf) {
-        // data is received
+
     }
 }
