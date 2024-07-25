@@ -6,6 +6,15 @@ fun ByteArray.toHex(): String {
     }
 }
 
+fun String.fromHex(): ByteArray {
+    val hex = this
+    val result = ByteArray(hex.length / 2)
+    for (i in hex.indices step 2) {
+        result[i / 2] = hex.substring(i, i + 2).toInt(16).toByte()
+    }
+    return result
+}
+
 fun ByteArray.writeUInt32BE(value: Long, offset: Int) {
     this[offset] = (value shr 24).toByte()
     this[offset + 1] = (value shr 16).toByte()
