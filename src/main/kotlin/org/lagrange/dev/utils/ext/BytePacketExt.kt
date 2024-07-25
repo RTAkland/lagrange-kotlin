@@ -20,6 +20,16 @@ fun BytePacketBuilder.barrier(target: ((BytePacketBuilder) -> Unit), prefix: Pre
     writePacket(written.build())
 }
 
+fun ByteReadPacket.readString(prefix: Prefix): String {
+    val length = readLength(prefix)
+    return this.readText(length.toInt())
+}
+
+fun ByteReadPacket.readBytes(prefix: Prefix): ByteArray {
+    val length = readLength(prefix)
+    return this.readBytes(length.toInt())
+}
+
 private fun BytePacketBuilder.writeLength(length: UInt, prefix: Prefix) {
     val prefixLength = prefix.getPrefixLength()
     val includePrefix = prefix.isIncludePrefix()
@@ -29,5 +39,17 @@ private fun BytePacketBuilder.writeLength(length: UInt, prefix: Prefix) {
         1 -> this.writeByte(writtenLength.toByte())
         2 -> this.writeUShort(writtenLength.toUShort())
         4 -> this.writeUInt(writtenLength)
+    }
+}
+
+private fun ByteReadPacket.readLength(prefix: Prefix): UInt {
+    val prefixLength = prefix.getPrefixLength()
+    val includePrefix = prefix.isIncludePrefix()
+    
+    return when (prefixLength) {
+        1 -> this.readByte().toUInt() - (if (includePrefix) prefixLength else 0).toUInt()
+        2 -> this.readUShort().toUInt() - (if (includePrefix) prefixLength else 0).toUInt()
+        4 -> this.readUInt() - (if (includePrefix) prefixLength else 0).toUInt()
+        else -> 0u
     }
 }
