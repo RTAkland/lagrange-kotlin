@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
     kotlin("jvm") version "1.9.10"
+    kotlin("plugin.serialization") version "1.9.10"
 }
 
 group = "org.lagrange.dev"
@@ -18,6 +18,8 @@ dependencies {
     
     implementation("io.ktor:ktor-client-core:1.6.7")
     implementation("io.ktor:ktor-client-cio:1.6.7")
+    implementation("io.ktor:ktor-client-json:1.6.7")
+    implementation("io.ktor:ktor-client-serialization:1.6.7")
 
     implementation("org.slf4j:slf4j-api:2.0.0")
     implementation("ch.qos.logback:logback-classic:1.4.12")

@@ -59,10 +59,8 @@ class TlvQrCode(
     
     fun tlvD1() = defineTlv(0xd1u) {
         val buf = protobufOf(
-            1 to protobufOf(
-                1 to appInfo.os,
-                2 to keystore.deviceName
-            ),
+            1 to 1 to appInfo.os,
+            1 to 2 to keystore.deviceName,
             4 to 6 to 1
         )
         

@@ -1,14 +1,16 @@
 package org.lagrange.dev.network
 
+import io.ktor.client.*
+import io.ktor.client.request.*
 import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
-import io.ktor.util.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.core.*
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNames
 import org.lagrange.dev.common.AppInfo
 import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.org.lagrange.dev.network.SsoResponse
@@ -19,13 +21,14 @@ import org.lagrange.dev.utils.proto.protobufOf
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.GZIPInputStream
+import kotlin.random.Random
 
 
 class PacketHandler(
     private val keystore: Keystore,
     private val appInfo: AppInfo
 ) {
-    private var sequence = 0
+    private var sequence = Random.nextInt(0x10000, 0x20000)
     private val host = "msfwifi.3g.qq.com"
     private val port = 8080
 
@@ -35,14 +38,17 @@ class PacketHandler(
     private lateinit var output: ByteWriteChannel
     private val pending: ConcurrentHashMap<Int, CompletableDeferred<SsoResponse>> = ConcurrentHashMap()
     private val headLength = 4
+    var connected = false
 
     private val logger = LoggerFactory.getLogger(PacketHandler::class.java)
+    private val client = HttpClient()
 
     suspend fun connect() {
         val s = socket.connect(host, port)
         input = s.openReadChannel()
         output = s.openWriteChannel(autoFlush = true)
         logger.info("Connected to $host:$port")
+        connected = true
         
         CoroutineScope(Dispatchers.IO).launch {
             handleReceive()
@@ -53,10 +59,13 @@ class PacketHandler(
         val seq = sequence++
         val sso = buildSso(command, payload, seq)
         val service = buildService(sso)
-        output.writeFully(service)
-        
+
         val response = CompletableDeferred<SsoResponse>()
         pending[seq] = response
+        output.writeFully(service)
+        
+        logger.debug("Sent packet '$command' with sequence $seq")
+        
         return response.await()
     }
 
@@ -78,33 +87,49 @@ class PacketHandler(
     private fun buildSso(command: String, payload: ByteArray, sequence: Int): ByteArray {
         val packet = BytePacketBuilder()
         
-        packet.writeInt(sequence)
-        packet.writeInt(appInfo.subAppId)
-        packet.writeInt(2052)  // locale id
-        packet.writeFully("020000000000000000000000".fromHex())
-        packet.writeBytes(keystore.tgt, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-        packet.writeString(command, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-        packet.writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
-        packet.writeString(keystore.guid.toHex(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-        packet.writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
-        packet.writeString(appInfo.currentVersion, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-        packet.writeBytes(buildSsoReserved(true), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
+        packet.barrier({
+            it.writeInt(sequence)
+            it.writeInt(appInfo.subAppId)
+            it.writeInt(2052)  // locale id
+            it.writeFully("020000000000000000000000".fromHex())
+            it.writeBytes(keystore.tgt, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            it.writeString(command, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            it.writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
+            it.writeString(keystore.guid.toHex(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            it.writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
+            it.writeString(appInfo.currentVersion, Prefix.UINT_16 or Prefix.INCLUDE_PREFIX)
+            it.writeBytes(buildSsoReserved(command, payload, false), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+        }, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+        
         packet.writeBytes(payload, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
         
         return packet.build().readBytes()
     }
     
-    private fun buildSsoReserved(isSign: Boolean): ByteArray {
+    private fun buildSsoReserved(command: String, payload: ByteArray, isSign: Boolean): ByteArray {
         val proto = protobufOf(
             15 to StringGenerator.generateTrace(),
-            16 to keystore.uid
         )
         
+        if (keystore.uid != "") {
+            proto[16] = keystore.uid
+        }
+        
         if (isSign) {
+            val url = "https://sign.lagrangecore.org/api/sign/25765"
+            val response = runBlocking { 
+                client.post<String>(url) {
+                    body = Json.encodeToString(SignRequest(cmd = command, seq = sequence, src = payload.toHex()))
+                    headers {
+                        append("Content-Type", "application/json")
+                    }
+                }
+            }
+            val value = Json.decodeFromString(SignResponse.serializer(), response).value
             proto[24] = protobufOf(
-                1 to ByteArray(0),
-                2 to ByteArray(0),
-                3 to ByteArray(0)
+                1 to value.sign.fromHex(),
+                2 to value.token.fromHex(),
+                3 to value.extra.fromHex()
             )
         }
         
@@ -122,6 +147,8 @@ class PacketHandler(
                 
                 val service = parseService(payload)
                 val sso = parseSso(service)
+                logger.debug("Received packet '${sso.command}' with sequence ${sso.sequence}")
+                
                 pending.remove(sso.sequence).also { 
                     it?.complete(sso) ?: logger.warn("No pending request for sequence ${sso.sequence}")
                 }
@@ -163,7 +190,6 @@ class PacketHandler(
     private fun parseService(raw: ByteArray): ByteArray {
         val reader = ByteReadPacket(raw)
         
-        val length = reader.readUInt()
         val protocol = reader.readUInt()
         val authFlag = reader.readByte()
         val flag = reader.readByte()
@@ -179,4 +205,23 @@ class PacketHandler(
             else -> throw Exception("Unrecognized auth flag: $authFlag")
         }
     }
+    
+    @Serializable
+    private data class SignRequest(
+        @JsonNames("cmd") val cmd: String,
+        @JsonNames("seq") val seq: Int,
+        @JsonNames("src") val src: String
+    )
+    
+    @Serializable
+    private data class SignResponse(
+        val value: SignValue
+    )
+
+    @Serializable
+    private data class SignValue(
+        val sign: String,
+        val token: String,
+        val extra: String
+    )
 }

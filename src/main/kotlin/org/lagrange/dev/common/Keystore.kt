@@ -32,7 +32,7 @@ data class Keystore(
                 d2Key = ByteArray(16),
                 tgtgt =  ByteArray(0),
                 qrSig = ByteArray(0),
-                guid =  ByteArray(16),
+                guid =  Random.nextBytes(16),
                 deviceName = "Lagrange-${Random.nextBytes(3).toHex()}")
         }
     }

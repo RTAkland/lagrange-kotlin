@@ -27,16 +27,12 @@ class ECDH(
         val length = publicKey.size
         if (length != curve.size * 2 + 1 && length != curve.size + 1) throw Exception("Length does not match.")
         
-        var x = ByteArray(curve.size)
-        arraycopy(publicKey, 1, x, 0, curve.size)
-        x.reverse()
-        x = x.copyOf(curve.size + 1)
+        val x = ByteArray(curve.size + 1)
+        arraycopy(publicKey, 1, x, 1, curve.size)
         
         if (publicKey[0] == 0x04.toByte()) {
-            var y = ByteArray(curve.size)
-            arraycopy(publicKey, curve.size + 1, y, 0, curve.size)
-            y.reverse()
-            y = y.copyOf(curve.size + 1)
+            val y = ByteArray(curve.size + 1)
+            arraycopy(publicKey, curve.size + 1, y, 1, curve.size)
             
             return EllipticPoint(BigInteger(x), BigInteger(y))
         }
@@ -59,31 +55,29 @@ class ECDH(
     private fun packPublic(ecPub: EllipticPoint, compress: Boolean = true): ByteArray {
         if (compress) {
             var result = ecPub.x.toByteArray()
-            if (result.size == curve.size) result = result.copyOf(curve.size + 1)
-            
-            result = takeReverse(result, curve.size)
+            if (result.size == curve.size) result = byteArrayOf(0x0) + result
             result[0] = if (ecPub.y.isEven() xor (ecPub.y.signum() < 0)) 0x02 else 0x03
             return result
         }
         
-        val x = takeReverse(ecPub.x.toByteArray(), curve.size)
-        val y = takeReverse(ecPub.y.toByteArray(), curve.size)
-        val buffer = ByteArray(curve.size * 2 + 1)
+        val x = ecPub.x.toByteArray()
+        val y = ecPub.y.toByteArray()
         
-        buffer[0] = 0x04
-        arraycopy(x, 0, buffer, 1, x.size)
-        arraycopy(y, 0, buffer, y.size + 1, x.size)
-        
-        return buffer
+        return byteArrayOf(0x04) + x + y
     }
     
     
     private fun packShared(ecShared: EllipticPoint, isHash: Boolean): ByteArray {
-        val x = takeReverse(ecShared.x.toByteArray(), curve.size)
+        var x = ecShared.x.toByteArray()
+        if (x.size != curve.size) {
+            val result = ByteArray(curve.size)
+            arraycopy(x, 1, result, 0, curve.size)
+            x = result
+        }
         if (!isHash) return x
         
         val md5 = MessageDigest.getInstance("MD5")
-        return md5.digest(x.copyOf(curve.size))
+        return md5.digest(x.copyOf(curve.packSize))
     }
     
     private fun createPublic(ecSec: BigInteger): EllipticPoint {
@@ -156,14 +150,6 @@ class ECDH(
         
         if (!curve.checkOn(pr)) throw Exception()
         return pr
-    }
-    
-    private fun takeReverse(array: ByteArray, length: Int): ByteArray {
-        val result = ByteArray(length)
-        for (i in 0 until length) {
-            result[i] = array[length - 1 - i]
-        }
-        return result
     }
     
     private fun modInverse(a: BigInteger, p: BigInteger): BigInteger {

@@ -16,15 +16,15 @@ fun String.fromHex(): ByteArray {
 }
 
 fun ByteArray.writeUInt32BE(value: Long, offset: Int) {
-    this[offset] = (value shr 24).toByte()
-    this[offset + 1] = (value shr 16).toByte()
-    this[offset + 2] = (value shr 8).toByte()
+    this[offset] = (value ushr 24).toByte()
+    this[offset + 1] = (value ushr 16).toByte()
+    this[offset + 2] = (value ushr 8).toByte()
     this[offset + 3] = value.toByte()
 }
 
 fun ByteArray.readUInt32BE(offset: Int): Long {
-    return (this[offset].toLong() shl 24) or
-            ((this[offset + 1].toLong() and 0xff) shl 16) or
-            ((this[offset + 2].toLong() and 0xff) shl 8) or
-            (this[offset + 3].toLong() and 0xff)
+    return ((this[offset].toUInt() shl 24) or
+            ((this[offset + 1].toUInt() and 0xffu) shl 16) or
+            ((this[offset + 2].toUInt() and 0xffu) shl 8) or
+            (this[offset + 3].toUInt() and 0xffu)).toLong()
 }

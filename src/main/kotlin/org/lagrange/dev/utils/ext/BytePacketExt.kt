@@ -22,7 +22,7 @@ fun BytePacketBuilder.barrier(target: ((BytePacketBuilder) -> Unit), prefix: Pre
 
 fun ByteReadPacket.readString(prefix: Prefix): String {
     val length = readLength(prefix)
-    return this.readText(length.toInt())
+    return this.readBytes(length.toInt()).toString(Charsets.UTF_8)
 }
 
 fun ByteReadPacket.readBytes(prefix: Prefix): ByteArray {
@@ -39,6 +39,7 @@ private fun BytePacketBuilder.writeLength(length: UInt, prefix: Prefix) {
         1 -> this.writeByte(writtenLength.toByte())
         2 -> this.writeUShort(writtenLength.toUShort())
         4 -> this.writeUInt(writtenLength)
+        else -> {}
     }
 }
 
