@@ -6,16 +6,18 @@ import org.lagrange.dev.utils.ext.toHex
 import kotlin.random.Random
 
 data class Keystore(
-    val uin: Long,
-    val uid: String,
-    
-    val tgt: ByteArray,
-    val d2: ByteArray,
-    val d2Key: ByteArray,
-    val tgtgt: ByteArray,
-    
-    val qrSig: ByteArray,
-    
+    var uin: Long,
+    var uid: String,
+
+    var tgt: ByteArray,
+    var d2: ByteArray,
+    var d2Key: ByteArray,
+    var tgtgt: ByteArray,
+    var a2: ByteArray,
+    var noPicSig: ByteArray,
+
+    var qrSig: ByteArray,
+
     val guid: ByteArray,
     val deviceName: String,
 
@@ -31,6 +33,8 @@ data class Keystore(
                 d2 =  ByteArray(0),
                 d2Key = ByteArray(16),
                 tgtgt =  ByteArray(0),
+                a2 = ByteArray(0),
+                noPicSig = ByteArray(0),
                 qrSig = ByteArray(0),
                 guid =  Random.nextBytes(16),
                 deviceName = "Lagrange-${Random.nextBytes(3).toHex()}")

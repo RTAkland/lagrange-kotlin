@@ -1,13 +1,11 @@
 package org.lagrange.dev.packet.login
 
 import io.ktor.utils.io.core.*
+import io.ktor.utils.io.core.readBytes
 import org.lagrange.dev.common.AppInfo
 import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.utils.crypto.TEA
-import org.lagrange.dev.utils.ext.Prefix
-import org.lagrange.dev.utils.ext.barrier
-import org.lagrange.dev.utils.ext.fromHex
-import org.lagrange.dev.utils.ext.writeBytes
+import org.lagrange.dev.utils.ext.*
 import kotlin.random.Random
 
 internal class wtlogin(
@@ -58,16 +56,43 @@ internal class wtlogin(
         return buildWtLogin(packet.build().readBytes(), 2064u)
     }
 
-    fun parseTransEmp0x31(raw: ByteArray) {
+    fun parseTransEmp0x31(raw: ByteArray): Map<UShort, ByteArray> {
         val wtlogin = parseWtLogin(raw)
+        val code2d = parseCode2DPacket(wtlogin)
+        
+        val reader = ByteReadPacket(code2d)
+        reader.discard(1)
+        
+        val sig = reader.readBytes(Prefix.UINT_16 or Prefix.LENGTH_ONLY)
+        val tlv = readTlv(reader)
+        keystore.qrSig = sig
+        
+        return tlv
     }
 
-    fun parseTransEmp0x12() {
-
+    fun parseTransEmp0x12(raw: ByteArray): QrCodeState {
+        val wtlogin = parseWtLogin(raw)
+        val code2d = parseCode2DPacket(wtlogin)
+        
+        val reader = ByteReadPacket(code2d)
+        val retCode = QrCodeState(reader.readByte())
+        if (retCode.value == QrCodeState.Confirmed.value) {
+            reader.discard(4)
+            keystore.uin = reader.readUInt().toLong()
+            reader.discard(4)
+            
+            val tlv = readTlv(reader)
+            keystore.tgtgt = tlv[0x1eu]!!
+            keystore.a2 = tlv[0x18u]!!
+            keystore.noPicSig = tlv[0x19u]!!
+        }
+        
+        return retCode
     }
     
-    fun parseLogin() {
-        
+    fun parseLogin(raw: ByteArray) {
+        val wtlogin = parseWtLogin(raw)
+
     }
 
     private fun buildCode2DPacket(tlvs: ByteArray, command: UShort): ByteArray {
@@ -99,6 +124,18 @@ internal class wtlogin(
         packet.writeFully(requestBody.build().readBytes())
 
         return buildWtLogin(packet.build().readBytes(), 2066u)
+    }
+    
+    private fun parseCode2DPacket(wtlogin: ByteArray): ByteArray {
+        val reader = ByteReadPacket(wtlogin)
+        
+        val packetLength = reader.readUInt()
+        reader.discard(4)
+        val command = reader.readUShort()
+        reader.discard(40)
+        val appId = reader.readUInt()
+        
+        return reader.readBytes(reader.remaining.toInt())
     }
     
     private fun buildWtLogin(payload: ByteArray, command: UShort): ByteArray {
@@ -156,5 +193,19 @@ internal class wtlogin(
         packet.writeBytes(keystore.ecdh192.getPublicKey(true), Prefix.UINT_16 or Prefix.LENGTH_ONLY)
         
         return packet.build().readBytes()
+    }
+    
+    private fun readTlv(reader: ByteReadPacket): Map<UShort, ByteArray> {
+        val tlvCount = reader.readUShort()
+        val result = mutableMapOf<UShort, ByteArray>()
+        for (i in 0 until tlvCount.toInt()) {
+            val tag = reader.readUShort()
+            val length = reader.readUShort()
+            val value = reader.readBytes(length.toInt())
+            
+            result[tag] = value
+        }
+        
+        return result
     }
 }
