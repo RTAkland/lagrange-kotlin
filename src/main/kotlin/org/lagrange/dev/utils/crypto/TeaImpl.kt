@@ -4,7 +4,7 @@ import io.ktor.utils.io.errors.*
 import org.lagrange.dev.utils.ext.readInt32BE
 import kotlin.random.Random
 
-class TeaImpl {
+internal class TeaImpl {
     private var contextStart = 0
     private var crypt = 0
     private var key: ByteArray = ByteArray(0)

@@ -7,7 +7,7 @@ import java.lang.System.arraycopy
 import java.math.BigInteger
 import java.security.MessageDigest
 
-class ECDH(
+internal class ECDH(
     private val curve: EllipticCurve
 ) {
     private val secret = createSecret()

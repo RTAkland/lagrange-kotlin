@@ -2,7 +2,7 @@ package org.lagrange.dev.utils.crypto.ecdh
 
 import java.math.BigInteger
 
-class EllipticPoint(
+internal class EllipticPoint(
     val x: BigInteger,
     val y: BigInteger
 ) {

@@ -2,17 +2,17 @@ package org.lagrange.dev.utils.ext
 
 import io.ktor.utils.io.core.*
 
-fun BytePacketBuilder.writeString(value: String, prefix: Prefix = Prefix.NONE) {
+internal fun BytePacketBuilder.writeString(value: String, prefix: Prefix = Prefix.NONE) {
     this.writeLength(value.length.toUInt(), prefix)
     this.writeText(value)
 }
 
-fun BytePacketBuilder.writeBytes(value: ByteArray, prefix: Prefix = (Prefix.NONE)) {
+internal fun BytePacketBuilder.writeBytes(value: ByteArray, prefix: Prefix = (Prefix.NONE)) {
     this.writeLength(value.size.toUInt(), prefix)
     this.writeFully(value)
 }
 
-fun BytePacketBuilder.barrier(target: ((BytePacketBuilder) -> Unit), prefix: Prefix, addition: Int = 0) {
+internal fun BytePacketBuilder.barrier(target: ((BytePacketBuilder) -> Unit), prefix: Prefix, addition: Int = 0) {
     val written = BytePacketBuilder()
     target(written)
     
@@ -20,12 +20,12 @@ fun BytePacketBuilder.barrier(target: ((BytePacketBuilder) -> Unit), prefix: Pre
     writePacket(written.build())
 }
 
-fun ByteReadPacket.readString(prefix: Prefix): String {
+internal fun ByteReadPacket.readString(prefix: Prefix): String {
     val length = readLength(prefix)
     return this.readBytes(length.toInt()).toString(Charsets.UTF_8)
 }
 
-fun ByteReadPacket.readBytes(prefix: Prefix): ByteArray {
+internal fun ByteReadPacket.readBytes(prefix: Prefix): ByteArray {
     val length = readLength(prefix)
     return this.readBytes(length.toInt())
 }

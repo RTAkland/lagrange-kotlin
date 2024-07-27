@@ -1,6 +1,6 @@
 package org.lagrange.dev.utils.ext
 
-open class Prefix(val value: Int) {
+internal open class Prefix(val value: Int) {
     data object NONE : Prefix(0b0000)
     
     data object UINT_8 : Prefix(0b0010)

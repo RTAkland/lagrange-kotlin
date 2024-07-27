@@ -2,7 +2,7 @@ package org.lagrange.dev.utils.crypto.ecdh
 
 import java.math.BigInteger
 
-class EllipticCurve(
+internal class EllipticCurve(
     val p: BigInteger,
     val a: BigInteger,
     val b: BigInteger,

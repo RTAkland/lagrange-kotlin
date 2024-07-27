@@ -8,7 +8,7 @@ import org.lagrange.dev.utils.ext.barrier
 import org.lagrange.dev.utils.ext.writeString
 import org.lagrange.dev.utils.proto.protobufOf
 
-class TlvQrCode(
+internal class TlvQrCode(
     private val keystore: Keystore,
     private val appInfo: AppInfo
 ) {

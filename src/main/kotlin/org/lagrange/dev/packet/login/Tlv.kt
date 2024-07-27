@@ -7,7 +7,7 @@ import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.utils.crypto.TEA
 import org.lagrange.dev.utils.ext.*
 
-class Tlv(
+internal class Tlv(
     private val keystore: Keystore,
     private val appInfo: AppInfo
 ) {

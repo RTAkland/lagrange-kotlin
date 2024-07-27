@@ -13,7 +13,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNames
 import org.lagrange.dev.common.AppInfo
 import org.lagrange.dev.common.Keystore
-import org.lagrange.dev.org.lagrange.dev.network.SsoResponse
 import org.lagrange.dev.utils.crypto.TEA
 import org.lagrange.dev.utils.ext.*
 import org.lagrange.dev.utils.generator.StringGenerator
@@ -24,7 +23,7 @@ import java.util.zip.GZIPInputStream
 import kotlin.random.Random
 
 
-class PacketHandler(
+internal class PacketHandler(
     private val keystore: Keystore,
     private val appInfo: AppInfo
 ) {
