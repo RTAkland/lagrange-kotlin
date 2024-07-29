@@ -197,7 +197,7 @@ internal class PacketHandler(
         if (protocol != 12u && protocol != 13u) throw Exception("Unrecognized protocol: $protocol")
         
         val encrypted = reader.readBytes(reader.remaining.toInt())
-        return  when (authFlag) {
+        return when (authFlag) {
             0.toByte() -> encrypted
             1.toByte() -> TEA.decrypt(encrypted, keystore.d2Key)
             2.toByte() -> TEA.decrypt(encrypted, ByteArray(16))

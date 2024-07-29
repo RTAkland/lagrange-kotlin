@@ -3,7 +3,6 @@ package org.lagrange.dev.utils.generator
 object StringGenerator {
     private const val HEX = "1234567890abcdef"
     
-    @OptIn(ExperimentalStdlibApi::class)
     fun generateTrace(): String {
         val sb = StringBuilder(55)
         

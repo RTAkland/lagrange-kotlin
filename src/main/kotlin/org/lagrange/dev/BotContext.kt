@@ -30,31 +30,35 @@ class BotContext(
         val response = packet.sendPacket("wtlogin.trans_emp", transEmp)
         val parsed = wtlogin(keystore, appInfo).parseTransEmp0x31(response.response)
         
-        CoroutineScope(Dispatchers.IO).launch {
-            while (true) {
-                val state = queryState()
-                
-                logger.info("QrCode state: ${state.value}")
-                
-                if (state.value == QrCodeState.Confirmed.value) {
-                    logger.info("QrCode confirmed, trying to login with NoPicSig")
-                    break
-                }
-                Thread.sleep(2000)
-            }
-        }
-        
         val proto = ProtoUtils.decodeFromByteArray(parsed.getValue(0xd1u))
         return Pair(proto[2].asUtf8String, parsed.getValue(0x17u))
     }
     
-    suspend fun queryState(): QrCodeState {
+    private suspend fun queryState(): QrCodeState {
         val transEmp = wtlogin(keystore, appInfo).buildTransEmp0x12()
         val response = packet.sendPacket("wtlogin.trans_emp", transEmp)
         return wtlogin(keystore, appInfo).parseTransEmp0x12(response.response)
     }
     
     suspend fun loginByQrCode() {
+        while (true) {
+            val state = queryState()
+
+            logger.info("QrCode state: ${state.value}")
+
+            if (state.value == QrCodeState.Confirmed.value) {
+                logger.info("QrCode confirmed, trying to login with NoPicSig")
+                break
+            }
+            Thread.sleep(2000)
+        }
+        
+        val login = wtlogin(keystore, appInfo).buildLogin()
+        val response = packet.sendPacket("wtlogin.login", login)
+        val parsed = wtlogin(keystore, appInfo).parseLogin(response.response)
+    }
+    
+    suspend fun loginByToken() {
         
     }
 }

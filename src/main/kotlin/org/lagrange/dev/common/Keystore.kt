@@ -20,10 +20,14 @@ data class Keystore(
 
     val guid: ByteArray,
     val deviceName: String,
+) { 
+    internal val ecdh192: ECDH = ECDH(EllipticCurve.secp192k1)
+    internal val ecdh256: ECDH = ECDH(EllipticCurve.prime256v1)
 
-    val ecdh192: ECDH = ECDH(EllipticCurve.secp192k1),
-    val ecdh256: ECDH = ECDH(EllipticCurve.prime256v1)
-) {
+    internal val keySig: ByteArray? = null
+    internal val exchangeKey: ByteArray? = null
+    internal val unusualCookies: String? = null
+    
     companion object {
         fun generateEmptyKeystore(): Keystore {
             return Keystore(

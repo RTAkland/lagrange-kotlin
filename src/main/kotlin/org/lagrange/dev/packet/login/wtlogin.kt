@@ -9,49 +9,73 @@ import org.lagrange.dev.utils.ext.*
 import kotlin.random.Random
 
 internal class wtlogin(
-    val keystore: Keystore, 
-    val appInfo: AppInfo
+    private val keystore: Keystore, 
+    private val appInfo: AppInfo
 ) {
     
     private val ecdhKey = "04928D8850673088B343264E0C6BACB8496D697799F37211DEB25BB73906CB089FEA9639B4E0260498B51A992D50813DA8".fromHex()
     
     fun buildTransEmp0x31(): ByteArray {
-        val tlvs = TlvQrCode(keystore, appInfo)
-        tlvs.tlv16()
-        tlvs.tlv1b()
-        tlvs.tlv1d()
-        tlvs.tlv33()
-        tlvs.tlv35()
-        tlvs.tlv66()
-        tlvs.tlvD1()
-        
-        val packet = BytePacketBuilder()
-        packet.writeUShort(0u)
-        packet.writeUInt(appInfo.appId.toUInt())
-        packet.writeULong(0u) // uin
-        packet.writeBytes(ByteArray(0))
-        packet.writeByte(0)
-        packet.writeBytes(ByteArray(0), Prefix.UINT_16 or Prefix.LENGTH_ONLY)
-        packet.writeBytes(tlvs.build())
+        val tlvs = TlvQrCode(keystore, appInfo).apply {
+            tlv16()
+            tlv1b()
+            tlv1d()
+            tlv33()
+            tlv35()
+            tlv66()
+            tlvD1()
+        }
+
+        val packet = BytePacketBuilder().apply {
+            writeUShort(0u)
+            writeUInt(appInfo.appId.toUInt())
+            writeULong(0u) // uin
+            writeBytes(ByteArray(0))
+            writeByte(0)
+            writeBytes(ByteArray(0), Prefix.UINT_16 or Prefix.LENGTH_ONLY)
+            writeBytes(tlvs.build())
+        }
 
         return buildCode2DPacket(packet.build().readBytes(), 0x31u)
     }
     
     fun buildTransEmp0x12(): ByteArray {
-        val packet = BytePacketBuilder()
-        packet.writeUShort(0u)
-        packet.writeUInt(appInfo.appId.toUInt())
-        packet.writeBytes(keystore.qrSig, Prefix.UINT_16 or Prefix.LENGTH_ONLY)
-        packet.writeULong(0u) // uin
-        packet.writeByte(0)
-        packet.writeBytes(ByteArray(0), Prefix.UINT_16 or Prefix.LENGTH_ONLY)
-        packet.writeUShort(0u) // actually it is the tlv count, but there is no tlv so 0x0 is used
+        val packet = BytePacketBuilder().apply {
+            writeUShort(0u)
+            writeUInt(appInfo.appId.toUInt())
+            writeBytes(keystore.qrSig, Prefix.UINT_16 or Prefix.LENGTH_ONLY)
+            writeULong(0u) // uin
+            writeByte(0)
+            writeBytes(ByteArray(0), Prefix.UINT_16 or Prefix.LENGTH_ONLY)
+            writeUShort(0u)  // actually it is the tlv count, but there is no tlv so 0x0 is used
+        }
         
         return buildCode2DPacket(packet.build().readBytes(), 0x12u)
     }
 
     fun buildLogin(): ByteArray {
-        val packet = BytePacketBuilder()
+        val tlvs = Tlv(keystore, appInfo).apply {
+            tlv106A2()
+            tlv144()
+            tlv116()
+            tlv142()
+            tlv145()
+            tlv18()
+            tlv141()
+            tlv177()
+            tlv191()
+            tlv100()
+            tlv107()
+            tlv318()
+            tlv16a()
+            tlv166()
+            tlv521()
+        }
+
+        val packet = BytePacketBuilder().apply {
+            writeUShort(9u) // internal command
+            writeFully(tlvs.build())
+        }
 
         return buildWtLogin(packet.build().readBytes(), 2064u)
     }
@@ -96,32 +120,34 @@ internal class wtlogin(
     }
 
     private fun buildCode2DPacket(tlvs: ByteArray, command: UShort): ByteArray {
-        val newPacket = BytePacketBuilder()
+        val newPacket = BytePacketBuilder().apply {
+            writeByte(0x2) // packet Start
+            writeUShort((43 + tlvs.size + 1).toUShort()) // _head_len = 43 + data.size +1
+            writeUShort(command)
+            writeFully(ByteArray(21))
+            writeByte(0x3)
+            writeShort(0x0) // close
+            writeShort(0x32) // Version Code: 50
+            writeUInt(0u) // trans_emp sequence
+            writeULong(0.toULong()) // dummy uin
+            writeFully(tlvs)
+            writeByte(0x3)
+        }
 
-        newPacket.writeByte(0x2) // packet Start
-        newPacket.writeUShort((43 + tlvs.size + 1).toUShort()) // _head_len = 43 + data.size +1
-        newPacket.writeUShort(command)
-        newPacket.writeFully(ByteArray(21))
-        newPacket.writeByte(0x3)
-        newPacket.writeShort(0x0) // close
-        newPacket.writeShort(0x32) // Version Code: 50
-        newPacket.writeUInt(0u) // trans_emp sequence
-        newPacket.writeULong(0.toULong()) // dummy uin
-        newPacket.writeFully(tlvs)
-        newPacket.writeByte(0x3)
+        val requestBody = BytePacketBuilder().apply {
+            writeUInt((System.currentTimeMillis() / 1000).toUInt())
+            writeFully(newPacket.build().readBytes())
+        }
 
-        val requestBody = BytePacketBuilder()
-        requestBody.writeUInt((System.currentTimeMillis() / 1000).toUInt())
-        requestBody.writeFully(newPacket.build().readBytes())
-
-        val packet = BytePacketBuilder()
-        packet.writeByte(0x0) // encryptMethod == EncryptMethod.EM_ST || encryptMethod == EncryptMethod.EM_ECDH_ST
-        packet.writeUShort(requestBody.size.toUShort())
-        packet.writeInt(appInfo.appId) // TODO: AppInfo.AppId
-        packet.writeInt(0x72) // Role
-        packet.writeBytes(ByteArray(0), Prefix.UINT_16 or Prefix.LENGTH_ONLY) // uSt
-        packet.writeBytes(ByteArray(0), Prefix.UINT_8 or Prefix.LENGTH_ONLY) // rollback
-        packet.writeFully(requestBody.build().readBytes())
+        val packet = BytePacketBuilder().apply {
+            writeByte(0x0) // encryptMethod == EncryptMethod.EM_ST || encryptMethod == EncryptMethod.EM_ECDH_ST
+            writeUShort(requestBody.size.toUShort())
+            writeInt(appInfo.appId) // TODO: AppInfo.AppId
+            writeInt(0x72) // Role
+            writeBytes(ByteArray(0), Prefix.UINT_16 or Prefix.LENGTH_ONLY) // uSt
+            writeBytes(ByteArray(0), Prefix.UINT_8 or Prefix.LENGTH_ONLY) // rollback
+            writeFully(requestBody.build().readBytes())
+        }
 
         return buildWtLogin(packet.build().readBytes(), 2066u)
     }
@@ -141,7 +167,6 @@ internal class wtlogin(
     private fun buildWtLogin(payload: ByteArray, command: UShort): ByteArray {
         val encrypted = TEA.encrypt(payload, keystore.ecdh192.keyExchange(ecdhKey, true))
         val packet = BytePacketBuilder()
-        
         packet.writeByte(2)
         packet.barrier({
             it.writeUShort(8001u)
@@ -183,17 +208,13 @@ internal class wtlogin(
         return decrypted
     }
     
-    private fun buildEncryptHead(): ByteArray {
-        val packet = BytePacketBuilder()
-        
-        packet.writeByte(1)
-        packet.writeByte(1)
-        packet.writeBytes(Random.nextBytes(16))
-        packet.writeUShort(0x102u) // unknown const
-        packet.writeBytes(keystore.ecdh192.getPublicKey(true), Prefix.UINT_16 or Prefix.LENGTH_ONLY)
-        
-        return packet.build().readBytes()
-    }
+    private fun buildEncryptHead(): ByteArray = BytePacketBuilder().apply {
+        writeByte(1)
+        writeByte(1)
+        writeBytes(Random.nextBytes(16))
+        writeUShort(0x102u) // unknown const
+        writeBytes(keystore.ecdh192.getPublicKey(true), Prefix.UINT_16 or Prefix.LENGTH_ONLY)
+    }.build().readBytes()
     
     private fun readTlv(reader: ByteReadPacket): Map<UShort, ByteArray> {
         val tlvCount = reader.readUShort()
