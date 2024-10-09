@@ -7,6 +7,7 @@ import io.ktor.network.sockets.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.core.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -72,12 +73,12 @@ internal class PacketHandler(
         val packet = BytePacketBuilder()
         
         packet.barrier({
-            it.writeInt(12)
-            it.writeByte(if (keystore.d2.isEmpty()) 2 else 1)
-            it.writeBytes(keystore.d2, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-            it.writeByte(0) // unknown
-            it.writeString(keystore.uin.toString(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-            it.writeBytes(TEA.encrypt(sso, keystore.d2Key))
+            writeInt(12)
+            writeByte(if (keystore.d2.isEmpty()) 2 else 1)
+            writeBytes(keystore.d2, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeByte(0) // unknown
+            writeString(keystore.uin.toString(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeBytes(TEA.encrypt(sso, keystore.d2Key))
         }, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
         
         return packet.build().readBytes()
@@ -87,17 +88,17 @@ internal class PacketHandler(
         val packet = BytePacketBuilder()
         
         packet.barrier({
-            it.writeInt(sequence)
-            it.writeInt(appInfo.subAppId)
-            it.writeInt(2052)  // locale id
-            it.writeFully("020000000000000000000000".fromHex())
-            it.writeBytes(keystore.tgt, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-            it.writeString(command, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-            it.writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
-            it.writeString(keystore.guid.toHex(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
-            it.writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
-            it.writeString(appInfo.currentVersion, Prefix.UINT_16 or Prefix.INCLUDE_PREFIX)
-            it.writeBytes(buildSsoReserved(command, payload, false), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeInt(sequence)
+            writeInt(appInfo.subAppId)
+            writeInt(2052)  // locale id
+            writeFully("020000000000000000000000".fromHex())
+            writeBytes(keystore.tgt, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeString(command, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
+            writeString(keystore.guid.toHex(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
+            writeString(appInfo.currentVersion, Prefix.UINT_16 or Prefix.INCLUDE_PREFIX)
+            writeBytes(buildSsoReserved(command, payload, true), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
         }, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
         
         packet.writeBytes(payload, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
@@ -207,13 +208,15 @@ internal class PacketHandler(
     
     @Serializable
     private data class SignRequest(
-        @JsonNames("cmd") val cmd: String,
-        @JsonNames("seq") val seq: Int,
-        @JsonNames("src") val src: String
+        @SerialName("cmd") val cmd: String,
+        @SerialName("seq") val seq: Int,
+        @SerialName("src") val src: String
     )
     
     @Serializable
     private data class SignResponse(
+        val platform: String,
+        val version: String,
         val value: SignValue
     )
 

@@ -7,6 +7,7 @@ import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.utils.crypto.TEA
 import org.lagrange.dev.utils.ext.*
 
+@OptIn(ExperimentalUnsignedTypes::class)
 internal class Tlv(
     private val keystore: Keystore,
     private val appInfo: AppInfo
@@ -70,8 +71,8 @@ internal class Tlv(
     
     fun tlv107() = defineTlv(0x107u) {
         writeUShort(1u) // pic type
-        writeUByte(0u) // captcha type
-        writeUShort(0x000du) // pic size
+        writeUByte(0x0du) // captcha type
+        writeUShort(0u) // pic size
         writeUByte(1u) // ret type
     }
     
@@ -89,7 +90,7 @@ internal class Tlv(
     fun tlv128() = defineTlv(0x128u) {
         writeUShort(0u)
         writeUByte(0u) // guid new
-        writeUByte(1u) // guid available
+        writeUByte(0u) // guid available
         writeUByte(0u) // guid changed
         writeUInt(0u) // guid flag
         writeString(appInfo.os, Prefix.UINT_16 or Prefix.LENGTH_ONLY)
@@ -119,7 +120,7 @@ internal class Tlv(
     }
     
     fun tlv145() = defineTlv(0x145u) {
-        writeString(keystore.guid.toHex())
+        writeBytes(keystore.guid)
     }
     
     fun tlv147() = defineTlv(0x147u) {
@@ -137,7 +138,7 @@ internal class Tlv(
     }
     
     fun tlv16e() = defineTlv(0x16eu) {
-        writeString(keystore.deviceName, Prefix.UINT_16 or Prefix.LENGTH_ONLY)
+        writeString(keystore.deviceName)
     }
     
     fun tlv177() = defineTlv(0x177u) {
@@ -170,7 +171,7 @@ internal class Tlv(
 
         builder.writeUShort(tag)
         builder.barrier({
-            tlv(it)
+            tlv()
         }, Prefix.UINT_16 or Prefix.LENGTH_ONLY)
     }
 }

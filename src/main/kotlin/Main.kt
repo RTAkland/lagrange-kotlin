@@ -11,12 +11,12 @@ fun main() {
     val (url, qrcode) = runBlocking { 
         bot.fetchQrCode()
     }
-    runBlocking { 
-        bot.loginByQrCode()
-    }
-    
     // /Users/wenxuanlin/Desktop/Project/OicqRepos/lagrange-kotlin
     Files.write(Paths.get("/Users/wenxuanlin/Desktop/Project/OicqRepos/lagrange-kotlin/qrcode.png"), qrcode)
+
+    runBlocking {
+        bot.loginByQrCode()
+    }
 
     Thread.sleep(Long.MAX_VALUE)
 }

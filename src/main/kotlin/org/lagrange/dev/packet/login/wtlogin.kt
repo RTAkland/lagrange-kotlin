@@ -6,8 +6,11 @@ import org.lagrange.dev.common.AppInfo
 import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.utils.crypto.TEA
 import org.lagrange.dev.utils.ext.*
+import org.lagrange.dev.utils.proto.ProtoUtils
+import org.lagrange.dev.utils.proto.asUtf8String
 import kotlin.random.Random
 
+@OptIn(ExperimentalUnsignedTypes::class)
 internal class wtlogin(
     private val keystore: Keystore, 
     private val appInfo: AppInfo
@@ -114,9 +117,30 @@ internal class wtlogin(
         return retCode
     }
     
-    fun parseLogin(raw: ByteArray) {
+    fun parseLogin(raw: ByteArray): Boolean {
         val wtlogin = parseWtLogin(raw)
-
+        val reader = ByteReadPacket(wtlogin)
+        
+        val command = reader.readUShort()
+        val state = reader.readUByte()
+        val tlv119Reader = readTlv(reader)
+        
+        if (state.toInt() == 0) {
+            val tlv119 = tlv119Reader[0x119u]!!
+            val tlvs = readTlv(ByteReadPacket(TEA.decrypt(tlv119, keystore.tgtgt)))
+            keystore.apply { 
+                d2Key = tlvs[0x305u]!!
+                uid = ProtoUtils.decodeFromByteArray(tlvs[0x543u]!!)[9][11][1].asUtf8String
+                tgt = tlvs[0x10Au]!!
+                d2 = tlvs[0x143u]!!
+                a2 = tlvs[0x106u]!!
+            }
+            return true
+        } else {
+            
+        }
+        
+        return false
     }
 
     private fun buildCode2DPacket(tlvs: ByteArray, command: UShort): ByteArray {
@@ -169,20 +193,20 @@ internal class wtlogin(
         val packet = BytePacketBuilder()
         packet.writeByte(2)
         packet.barrier({
-            it.writeUShort(8001u)
-            it.writeUShort(command)
-            it.writeUShort(0u) // TODO: Sequence
-            it.writeUInt(keystore.uin.toUInt()) // TODO: Uin
-            it.writeByte(3) // extVer
-            it.writeByte(135.toByte()) // cmdVer
-            it.writeUInt(0u) // actually unknown const 0
-            it.writeByte(19) // pubId
-            it.writeUShort(0u) // insId
-            it.writeUShort(appInfo.appClientVersion.toUShort())
-            it.writeUInt(0u) // retryTime
-            it.writeFully(buildEncryptHead())
-            it.writeFully(encrypted)
-            it.writeByte(3)
+            writeUShort(8001u)
+            writeUShort(command)
+            writeUShort(0u) // TODO: Sequence
+            writeUInt(keystore.uin.toUInt()) // TODO: Uin
+            writeByte(3) // extVer
+            writeByte(135.toByte()) // cmdVer
+            writeUInt(0u) // actually unknown const 0
+            writeByte(19) // pubId
+            writeUShort(0u) // insId
+            writeUShort(appInfo.appClientVersion.toUShort())
+            writeUInt(0u) // retryTime
+            writeFully(buildEncryptHead())
+            writeFully(encrypted)
+            writeByte(3)
         }, Prefix.UINT_16 or Prefix.INCLUDE_PREFIX, 1) // addition of 1 aims to include packet start
         
         return packet.build().readBytes()

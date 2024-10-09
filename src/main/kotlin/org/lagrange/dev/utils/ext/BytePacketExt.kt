@@ -12,7 +12,7 @@ internal fun BytePacketBuilder.writeBytes(value: ByteArray, prefix: Prefix = (Pr
     this.writeFully(value)
 }
 
-internal fun BytePacketBuilder.barrier(target: ((BytePacketBuilder) -> Unit), prefix: Prefix, addition: Int = 0) {
+internal fun BytePacketBuilder.barrier(target: ((BytePacketBuilder).() -> Unit), prefix: Prefix, addition: Int = 0) {
     val written = BytePacketBuilder()
     target(written)
     

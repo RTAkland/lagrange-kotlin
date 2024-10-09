@@ -77,7 +77,7 @@ internal class TlvQrCode(
 
         builder.writeUShort(tag)
         builder.barrier({
-            tlv(it)
+            tlv()
         }, Prefix.UINT_16 or Prefix.LENGTH_ONLY)
     }
 }

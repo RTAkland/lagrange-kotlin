@@ -58,7 +58,7 @@ internal class ntlogin(
     
     fun buildKeyExchange(): ByteArray {
         val gcmCalc2Key = "e2733bf403149913cbf80c7a95168bd4ca6935ee53cd39764beebe2e007e3aee".fromHex()
-        val serverPub = "".fromHex()
+        val serverPub = "049D1423332735980EDABE7E9EA451B3395B6F35250DB8FC56F25889F628CBAE3E8E73077914071EEEBC108F4E0170057792BB17AA303AF652313D17C1AC815E79".fromHex()
         
         val plain1 = protobufOf(
             1 to keystore.uin.toString(),
