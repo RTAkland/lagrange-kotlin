@@ -1,10 +1,14 @@
 package org.lagrange.dev.common
 
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import org.lagrange.dev.utils.crypto.ECDH
 import org.lagrange.dev.utils.crypto.ecdh.EllipticCurve
 import org.lagrange.dev.utils.ext.toHex
 import kotlin.random.Random
 
+@Serializable
 data class Keystore(
     var uin: Long,
     var uid: String,
@@ -21,12 +25,12 @@ data class Keystore(
     val guid: ByteArray,
     val deviceName: String,
 ) { 
-    internal val ecdh192: ECDH = ECDH(EllipticCurve.secp192k1)
-    internal val ecdh256: ECDH = ECDH(EllipticCurve.prime256v1)
+    @Transient internal val ecdh192: ECDH = ECDH(EllipticCurve.secp192k1)
+    @Transient internal val ecdh256: ECDH = ECDH(EllipticCurve.prime256v1)
 
-    internal val keySig: ByteArray? = null
-    internal val exchangeKey: ByteArray? = null
-    internal val unusualCookies: String? = null
+    @Transient internal val keySig: ByteArray? = null
+    @Transient internal val exchangeKey: ByteArray? = null
+    @Transient internal val unusualCookies: String? = null
     
     companion object {
         fun generateEmptyKeystore(): Keystore {
