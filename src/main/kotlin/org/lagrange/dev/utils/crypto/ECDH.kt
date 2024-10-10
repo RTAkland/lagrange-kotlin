@@ -60,8 +60,19 @@ internal class ECDH(
             return result
         }
         
-        val x = ecPub.x.toByteArray()
-        val y = ecPub.y.toByteArray()
+        var x = ecPub.x.toByteArray()
+        var y = ecPub.y.toByteArray()
+        
+        if (x.size != curve.size) {
+            val result = ByteArray(curve.size)
+            arraycopy(x, 1, result, 0, curve.size)
+            x = result
+        }
+        if (y.size != curve.size) {
+            val result = ByteArray(curve.size)
+            arraycopy(y, 1, result, 0, curve.size)
+            y = result
+        }
         
         return byteArrayOf(0x04) + x + y
     }
