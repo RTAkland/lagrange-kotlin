@@ -110,7 +110,7 @@ internal class wtlogin(
             
             val tlv = readTlv(reader)
             keystore.tgtgt = tlv[0x1eu]!!
-            keystore.a2 = tlv[0x18u]!!
+            keystore.encryptedA1 = tlv[0x18u]!!
             keystore.noPicSig = tlv[0x19u]!!
         }
         
@@ -131,9 +131,9 @@ internal class wtlogin(
             keystore.apply { 
                 d2Key = tlvs[0x305u]!!
                 uid = ProtoUtils.decodeFromByteArray(tlvs[0x543u]!!)[9][11][1].asUtf8String
-                tgt = tlvs[0x10Au]!!
+                a2 = tlvs[0x10Au]!!
                 d2 = tlvs[0x143u]!!
-                a2 = tlvs[0x106u]!!
+                encryptedA1 = tlvs[0x106u]!!
             }
             return true
         } else {

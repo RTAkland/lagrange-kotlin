@@ -36,7 +36,7 @@ internal class Tlv(
     }
 
     fun tlv106A2() = defineTlv(0x106u) {
-        writeFully(keystore.a2)
+        writeFully(keystore.encryptedA1)
     }
     
     fun tlv106(md5pass: ByteArray) = defineTlv(0x106u) {
@@ -51,7 +51,7 @@ internal class Tlv(
             writeUInt(0u) // dummy ip
             writeByte(1) // save password
             writeFully(md5pass)
-            writeFully(keystore.tgt)
+            writeFully(keystore.a2)
             writeUInt(0u)
             writeByte(1) // guid available
             writeFully(keystore.guid)

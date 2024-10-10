@@ -11,7 +11,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNames
 import org.lagrange.dev.common.AppInfo
 import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.utils.crypto.TEA
@@ -92,7 +91,7 @@ internal class PacketHandler(
             writeInt(appInfo.subAppId)
             writeInt(2052)  // locale id
             writeFully("020000000000000000000000".fromHex())
-            writeBytes(keystore.tgt, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeBytes(keystore.a2, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
             writeString(command, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
             writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
             writeString(keystore.guid.toHex(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)

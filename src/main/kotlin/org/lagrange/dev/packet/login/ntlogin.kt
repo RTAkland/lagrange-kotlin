@@ -6,9 +6,7 @@ import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.utils.ext.fromHex
 import org.lagrange.dev.utils.ext.toHex
 import org.lagrange.dev.utils.helper.CryptoHelper
-import org.lagrange.dev.utils.proto.ProtoMap
-import org.lagrange.dev.utils.proto.protobufMapOf
-import org.lagrange.dev.utils.proto.protobufOf
+import org.lagrange.dev.utils.proto.*
 
 internal class ntlogin(
     private val keystore: Keystore,
@@ -35,7 +33,7 @@ internal class ntlogin(
     }
     
     fun buildNTLoginPacket(sig: ByteArray): ByteArray {
-        if (keystore.keySig == null || keystore.exchangeKey == null) {
+        if (keystore.keySig == null) {
             throw IllegalStateException("Key exchange not completed")
         }
         
@@ -51,7 +49,7 @@ internal class ntlogin(
         
         return protobufOf(
             1 to keystore.keySig,
-            2 to CryptoHelper.aesGcmEncrypt(proto.toByteArray(), keystore.exchangeKey),
+            2 to CryptoHelper.aesGcmEncrypt(proto.toByteArray(), keystore.exchangeKey!!),
             3 to 1
         ).toByteArray()
     }
@@ -64,7 +62,7 @@ internal class ntlogin(
             1 to keystore.uin.toString(),
             2 to keystore.guid
         ).toByteArray()
-        val gcmCalc1 = CryptoHelper.aesGcmEncrypt(plain1, keystore.ecdh256.keyExchange(serverPub))
+        val gcmCalc1 = CryptoHelper.aesGcmEncrypt(plain1, keystore.ecdh256.keyExchange(serverPub, false))
         
         val timestamp = System.currentTimeMillis() / 1000
         val plain2 = BytePacketBuilder().apply { 
@@ -84,5 +82,15 @@ internal class ntlogin(
             4 to timestamp,
             5 to gcmCalc2
         ).toByteArray()
+    }
+    
+    fun parseKeyExchange(response: ByteArray) {
+        val proto = ProtoUtils.decodeFromByteArray(response)
+        val shareKey = keystore.ecdh256.keyExchange(proto[3].asByteArray, false)
+        val decrypted = CryptoHelper.aesGcmDecrypt(proto[1].asByteArray, shareKey)
+        
+        val decryptedProto = ProtoUtils.decodeFromByteArray(decrypted)
+        keystore.exchangeKey = decryptedProto[1].asByteArray
+        keystore.keySig = decryptedProto[2].asByteArray
     }
 }
