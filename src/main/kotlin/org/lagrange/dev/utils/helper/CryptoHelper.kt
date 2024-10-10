@@ -17,7 +17,7 @@ internal object CryptoHelper {
         val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
         val secretKey = javax.crypto.spec.SecretKeySpec(key, "AES")
         cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKey, javax.crypto.spec.GCMParameterSpec(128, iv))
-        return cipher.doFinal(data.sliceArray(16 until data.size))
+        return cipher.doFinal(data.sliceArray(12 until data.size))
     }
     
     fun sha256(data: ByteArray): ByteArray {
