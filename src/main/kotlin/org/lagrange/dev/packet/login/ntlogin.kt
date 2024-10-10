@@ -23,7 +23,7 @@ internal class ntlogin(
             4 to keystore.guid.toHex()
         )
         it[3] = protobufOf(
-            1 to "", // TODO: Kernel Version
+            1 to "10.0.19042.0",
             2 to appInfo.appId,
             3 to appInfo.packageName
         )
@@ -37,21 +37,27 @@ internal class ntlogin(
             throw IllegalStateException("Key exchange not completed")
         }
         
-        val proto = protobufMapOf { 
-            it[1] = protobufOf(
-                1 to buildNTLoginHead(),
-                2 to protobufOf(
-                    1 to sig
-                    // TODO: Captcha
-                )
+        val proto = protobufOf(
+            1 to buildNTLoginHead(),
+            2 to protobufOf(
+                1 to sig
+                // TODO: Captcha
             )
-        }
+        )
         
         return protobufOf(
             1 to keystore.keySig,
             2 to CryptoHelper.aesGcmEncrypt(proto.toByteArray(), keystore.exchangeKey!!),
             3 to 1
         ).toByteArray()
+    }
+    
+    fun parseNTLogin(response: ByteArray) {
+        if (keystore.exchangeKey == null) {
+            throw IllegalStateException("Key exchange not completed")
+        }
+        
+        
     }
     
     fun buildKeyExchange(): ByteArray {

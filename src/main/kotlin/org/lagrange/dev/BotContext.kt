@@ -1,7 +1,6 @@
 package org.lagrange.dev
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.lagrange.dev.common.AppInfo
 import org.lagrange.dev.common.Keystore
 import org.lagrange.dev.network.PacketHandler
@@ -13,12 +12,12 @@ import org.lagrange.dev.utils.proto.ProtoUtils
 import org.lagrange.dev.utils.proto.asUtf8String
 import org.lagrange.dev.utils.proto.protobufOf
 import org.slf4j.LoggerFactory
+import java.util.concurrent.Executors
 
 class BotContext(
-    private val keystore: Keystore,
+    val keystore: Keystore,
     private val appInfo: AppInfo
 ) {
-    
     private val packet = PacketHandler(keystore, appInfo)
     
     private val logger = LoggerFactory.getLogger(BotContext::class.java)
@@ -42,6 +41,7 @@ class BotContext(
         return wtlogin(keystore, appInfo).parseTransEmp0x12(response.response)
     }
     
+    @OptIn(DelicateCoroutinesApi::class)
     private suspend fun online(): Boolean {
         val proto = protobufOf(
             1 to keystore.guid.toHex().lowercase(),
@@ -55,7 +55,7 @@ class BotContext(
                 3 to "Windows 10.0.19042",
                 4 to "",
                 5 to appInfo.vendorOs
-            ).toByteArray(),
+            ),
             7 to 0, // SetMute
             8 to 0, // RegisterVendorType
             9 to 1, // RegType
@@ -63,14 +63,24 @@ class BotContext(
         
         val sso = packet.sendPacket("trpc.qq_new_tech.status_svc.StatusService.Register", proto.toByteArray())
         val parsed = ProtoUtils.decodeFromByteArray(sso.response)
+        val success = parsed[2].asUtf8String.contains("register success")
         
-        return parsed[2].asUtf8String.contains("register success")
+        Executors.newSingleThreadExecutor().asCoroutineDispatcher().run {
+            GlobalScope.launch {
+                while (true) {
+                    val ssoHeartBeat = protobufOf(1 to 1)
+                    packet.sendPacket("trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat", ssoHeartBeat.toByteArray())
+                    Thread.sleep(270 * 1000) 
+                }
+            }
+        }
+        
+        return success
     }
     
     suspend fun loginByQrCode(): Boolean {
         while (true) {
             val state = queryState()
-
             logger.info("QrCode state: ${state.value}")
 
             if (state.value == QrCodeState.Confirmed.value) {
@@ -85,19 +95,32 @@ class BotContext(
         val login = wtlogin(keystore, appInfo).buildLogin()
         val response = packet.sendPacket("wtlogin.login", login)
         val success = wtlogin(keystore, appInfo).parseLogin(response.response)
-        
-        if (success) {
-            return online()
-        } else {
-            return false
-        }
+
+        return if (success) online() else false
     }
     
-    suspend fun loginByToken() {
-        if (keystore.d2.isNotEmpty() && keystore.d2Key.isNotEmpty()) {
-            val keyExchange = ntlogin(keystore, appInfo).buildKeyExchange()
-        } else {
-            
+    suspend fun loginByToken(): Boolean {
+        if (!packet.connected) {
+            packet.connect()
         }
+        
+        if (keystore.d2.isNotEmpty() && keystore.d2Key.isNotEmpty()) {
+            try { 
+                return online() 
+            } catch (e: Exception) {
+                logger.error("Failed to directly online", e)
+            }
+        }
+
+        keystore.clear()
+        val keyExchange = ntlogin(keystore, appInfo).buildKeyExchange()
+        val response = packet.sendPacket("trpc.login.ecdh.EcdhService.SsoKeyExchange", keyExchange)
+        ntlogin(keystore, appInfo).parseKeyExchange(response.response)
+        logger.info("Key exchange completed")
+        
+        val easyLogin = ntlogin(keystore, appInfo).buildNTLoginPacket(keystore.encryptedA1)
+        val loginResponse = packet.sendPacket("trpc.login.ecdh.EcdhService.SsoNTLoginEasyLogin", easyLogin)
+        
+        return false
     }
 }
