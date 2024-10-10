@@ -59,6 +59,7 @@ object ProtoUtils {
                     else -> error("Not support type for tag: ${tag.toString()}")
                 }
             }
+            is ProtoMap -> any
             else -> error("Not support type: ${any::class.simpleName}")
         }
     }
