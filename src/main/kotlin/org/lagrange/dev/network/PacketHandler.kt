@@ -97,7 +97,7 @@ internal class PacketHandler(
             writeString(keystore.guid.toHex(), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
             writeBytes(ByteArray(0), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX) // unknown
             writeString(appInfo.currentVersion, Prefix.UINT_16 or Prefix.INCLUDE_PREFIX)
-            writeBytes(buildSsoReserved(command, payload, true), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
+            writeBytes(buildSsoReserved(command, payload), Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
         }, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
         
         packet.writeBytes(payload, Prefix.UINT_32 or Prefix.INCLUDE_PREFIX)
@@ -105,7 +105,7 @@ internal class PacketHandler(
         return packet.build().readBytes()
     }
     
-    private fun buildSsoReserved(command: String, payload: ByteArray, isSign: Boolean): ByteArray {
+    private fun buildSsoReserved(command: String, payload: ByteArray): ByteArray {
         val proto = protobufOf(
             15 to StringGenerator.generateTrace(),
         )
@@ -114,7 +114,7 @@ internal class PacketHandler(
             proto[16] = keystore.uid
         }
         
-        if (isSign) {
+        if (whiteListCommand.contains(command)) {
             val url = "https://sign.lagrangecore.org/api/sign/25765"
             val response = runBlocking { 
                 client.post<String>(url) {
